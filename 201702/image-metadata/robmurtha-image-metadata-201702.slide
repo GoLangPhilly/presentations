@@ -1,0 +1,340 @@
+Processing Image and Video Metadata
+GoLang Philly Talk
+16 Feb 2017
+Tags: golangphilly, golang, image, video
+
+Rob Murtha
+Robot, Robots And Pencils
+robmurtha@gmail.com
+@robmurtha
+
+https://github.com/GoLangPhilly/presentations/201702/image-metadata
+
+* Agenda
+
+- Common Image Processing Scenarios
+- Image Processing Resources
+- Go Resources
+- Metadata Deep Dive
+- Common Tools For Extracting Metadata
+- Pure Go Options
+- Example Project - Expose
+
+
+* About Me
+
+- 30 years in software industry
+- 20 years in distributed systems
+- primary focus is backend services work in unix
+- C, C++, Java, Scala and Php
+- 2+ years with Go
+- several major projects relating to image, video processing
+- industries include test automation, banking, health care, media and arts, education
+- musician and hobby photographer and videographer
+
+* Gophersim
+
+.image bugsingo.jpg 500 _
+
+* Go Inspiration
+
+[[https://dave.cheney.net/2016/08/20/solid-go-design][Dave Cheney - SOLID]]
+https://dave.cheney.net/2016/08/20/solid-go-design
+
+- simplicity
+- performance
+- minimum burden all around
+
+Software entities should be open for extension, but closed for modification.
+-Bertrand Meyer, Object-Oriented Software Construction
+
+A great rule of thumb for Go is accept interfaces, return structs.
+–Jack Lindamood
+
+* Image Processing Scenarios
+
+- Organization
+- Categorization
+- Calculating Storage Requirements
+- Detecting Duplicates
+- Normalization / Size Optimization
+- Thumbnails
+- Watermarks / Overlays
+- Advanced Processing (facial, object detection)
+
+* Image Processing Resources
+
+This talk focuses on metadata but here are some resources for processing images.
+
+.link https://github.com/avelino/awesome-go#images Awesome Go Image Processing
+    https://github.com/avelino/awesome-go#images
+
+* Go Image Processing Packages
+
+- [[https://github.com/anthonynsimon/bild][bild]] - A collection of image processing algorithms in pure Go
+    https://github.com/anthonynsimon/bild
+
+- [[https://github.com/disintegration/imaging][imaging]] - Simple Go image processing package
+    https://github.com/disintegration/imaging
+
+- [[https://github.com/disintegration/gift][gift]] - Package of image processing filters
+    https://github.com/disintegration/gift
+
+* High Performance (with C libraries)
+
+- [[https://github.com/h2non/bimg][bimg]] - Small package for fast and efficient image processing using libvips
+    https://github.com/h2non/bimg
+
+- [[https://github.com/gographics/imagick][imagick]] - Go binding to ImageMagick's MagickWand C API
+    https://github.com/gographics/imagick
+
+- [[https://github.com/lazywei/go-opencv][go-opencv]] - Go bindings for OpenCV
+    https://github.com/lazywei/go-opencv
+
+* Backend Services
+
+- [[https://github.com/h2non/imaginary][imaginary]] - Fast and simple HTTP microservice for image resizing
+    https://github.com/h2non/imaginary
+
+* What is Image Metadata
+
+[[http://www.cipa.jp/std/documents/e/DC-008-Translation-2016-E.pdf][Exif Version 2.31]] - Exchangeable image file format for digital still cameras
+
+Established on April, 2010
+Revised on July, 2016
+Prepared by:
+Standardization Committee
+Published by:
+Camera & Imaging Products Association
+
+* Go Resources
+
+[[https://golanglibs.com/top?q=exif][golanglibs.com]] - go exif libraries
+[[https://github.com/rwcarlsen/goexif][goexif]] - go Exif scanning package
+
+    go get github.com/rwcarlsen/goexif
+
+* Opportunity
+- processing Metadata presents complex challenges
+- the number of Go packages available is small
+- packages that are specific may still be useful - please share!
+
+.image rubegoldberg.gif 300 _
+
+* External Metadata
+url / source
+path
+filename
+date/time
+size
+tags
+mime type
+
+    sinewave:Downloads robmurtha$ file --mime-type scooter.jpg
+    scooter.jpg: image/jpeg
+
+.image scooter.jpg 200 _
+
+* Mime Type using Go
+
+.code sniffer.go
+
+* Internal Metadata
+
+    sinewave:Downloads robmurtha$ file scooter.jpg
+    scooter.jpg: JPEG image data, EXIF standard
+
+
+    sinewave:image-metadata robmurtha$ mediainfo scooter.jpg
+    General
+    Complete name                            : scooter.jpg
+    Format                                   : JPEG
+    File size                                : 96.3 KiB
+
+    Image
+    Format                                   : JPEG
+    Width                                    : 500 pixels
+    Height                                   : 375 pixels
+    Color space                              : YUV
+    Chroma subsampling                       : 4:4:4
+    Bit depth                                : 8 bits
+    Compression mode                         : Lossy
+    Stream size                              : 96.3 KiB (100%)
+
+* EXIF Data
+
+    sinewave:image-metadata robmurtha$ exiv2 scooter.jpg
+    File name       : scooter.jpg
+    File size       : 98604 Bytes
+    MIME type       : image/jpeg
+    Image size      : 500 x 375
+    Camera make     : Apple
+    Camera model    : iPhone 6 Plus
+    Image timestamp : 2015:09:17 11:35:39
+    Image number    :
+    Exposure time   : 1/15 s
+    Aperture        : F2.2
+    Exposure bias   : +1/256 EV
+    Flash           : No, auto
+    Flash bias      :
+    Focal length    : 4.2 mm (35 mm equivalent: 29.0 mm)
+    Subject distance:
+    ISO speed       : 50
+    Exposure mode   : Auto
+    Metering mode   : Multi-segment
+    Macro mode      :
+    Image quality   :
+    Exif Resolution :
+    White balance   : Auto
+    Thumbnail       : None
+
+* Exif Utilities
+
+[[http://www.exiv2.org][Exiv2]] - Exif tool written in C++
+[[http://www.exiv2.org/metadata.html][Metadata]] - Metadata Reference Tables
+[[http://www.exiv2.org/tags.html][Exif tags]] - standard Exif tags
+
+[[http://owl.phy.queensu.ca/~phil/exiftool/][exiftool]] - Exif tool written in Perl - comprehensive
+
+* Extracting Metadata with Go
+
+[[https://github.com/rwcarlsen/goexif/exifstat][exifstat]] - Example of processing all tags using goexif.
+
+    go get github.com/rwcarlsen/goexif/exifstat
+
+* Walker Interface
+
+    // Walker is the interface used to traverse all fields of an Exif object.
+    type Walker interface {
+        // Walk is called for each non-nil EXIF field. Returning a non-nil
+        // error aborts the walk/traversal.
+        Walk(name FieldName, tag *tiff.Tag) error
+    }
+
+    ...
+
+    x, err := exif.Decode(f)
+    x.Walk(Walker{})
+
+    ...
+
+    type Walker struct{}
+
+    func (_ Walker) Walk(name exif.FieldName, tag *tiff.Tag) error {
+        data, _ := tag.MarshalJSON()
+        fmt.Printf("    %v: %v\n", name, string(data))
+        return nil
+    }
+
+* Exifstat Output
+
+    sinewave:Downloads robmurtha$ exifstat  ~/Downloads/scooter.jpg
+
+    ---- Image '/Users/robmurtha/Downloads/scooter.jpg' ----
+        Model: "iPhone 6 Plus"
+        GPSInfoIFDPointer: [734]
+        BrightnessValue: ["5686/2841"]
+        SensingMethod: [2]
+        LensModel: "iPhone 6 Plus back camera 4.15mm f/2.2"
+        GPSLongitudeRef: "W"
+        GPSSpeedRef: "K"
+        GPSImgDirectionRef: "T"
+        Software: "Adobe Photoshop Lightroom 5.7.1 (Macintosh)"
+        ColorSpace: [1]
+        SceneType: ""
+        WhiteBalance: [0]
+        GPSImgDirection: ["6604/25"]
+        GPSDestBearingRef: "T"
+        ExposureProgram: [2]
+        Flash: [24]
+        FocalLength: ["83/20"]
+        SceneCaptureType: [0]
+        ExposureTime: ["1/15"]
+        ShutterSpeedValue: ["3906891/1000000"]
+        ApertureValue: ["2275007/1000000"]
+
+* GPS Tags
+
+    sinewave:Downloads robmurtha$ exifstat  ~/Downloads/scooter.jpg | grep GPS
+        GPSAltitude: ["39419/3942"]
+        GPSImgDirectionRef: "T"
+        GPSLongitude: ["75/1","327323/10000","0/1"]
+        GPSLatitude: ["39/1","57513/10000","0/1"]
+        GPSLongitudeRef: "W"
+        GPSSpeed: ["0/1"]
+        GPSDestBearingRef: "T"
+        GPSLatitudeRef: "N"
+        GPSTimeStamp: ["15/1","35/1","37380/1000"]
+        GPSDestBearing: ["2104/25"]
+        GPSSpeedRef: "K"
+        GPSInfoIFDPointer: [734]
+        GPSAltitudeRef: [0]
+        GPSDateStamp: "2015:09:17"
+        GPSImgDirection: ["6604/25"]
+
+* Getting Latitude and Longitude
+
+- Some digging is reuqired to figure out what is available.
+- If a method is available, use it - metadata is notoriously dirty.
+
+    // LatLong returns the latitude and longitude of the photo and
+    // whether it was present.
+    func (x *Exif) LatLong() (lat, long float64, err error) {
+
+    ...
+
+    x, err := exif.Decode(f)
+    lat,long,err := x.LatLong()
+
+* Common Binary Tools for Extracting Metadata
+- Media Info - one of the best
+- Media Info - one of the hardest to tame
+- Exiv2
+- ImageMagick
+- FFMpeg - video and audio
+
+In some cases shelling out to a binary tools is a viable option, the trick is finding predictable parsable output.
+
+* All the Things
+
+.image willy.jpg 500 _
+
+* Example Project
+
+Let's assume we need to process images and videos and work with some specific metadata.
+
+- reading or writing
+- size and quantity
+- storage options
+- frequency schedule
+- overall goals and purpose
+
+
+* Go Expose
+
+[[https://github.com/robmurtha/expose][expose]] - XMP, EXIF and IPTC metadata for image and video files.
+
+    go get github.com/robmurtha/expose
+
+* Goals
+
+Begin a pipeline processing flow by getting available metadata for a single file.
+
+   discover -> extract -> send -> receive -> do work
+
+expose performs the extract metadata step only
+
+- get a list of available tags for XMP, EXIF and IPTC
+- export data as JSON
+
+* Snippet
+
+parse XMP tags with output from exiv2 -PXgnycv filename
+
+	expose := exiv2.New(output)
+	fields, _ := expose.Fields()
+	jsonBytes, _ := json.Marshal(fields)
+
+* Code Walkthrough
+
+* Questions
