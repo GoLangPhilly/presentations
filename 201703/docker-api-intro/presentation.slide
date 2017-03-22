@@ -1,0 +1,175 @@
+Docker Engine API with Go
+GoLang Philly Meetup
+21 Mar 2017
+Tags: golangphilly, golang, docker
+
+Roberto Rojas
+Chariot Solutions
+robertojrojas@gmail.com
+@robertojrojas
+
+https://github.com/GoLangPhilly/presentations/201703/docker-api-intro
+
+
+* About Me
+
+- 20 years as Software Developer
+- mainly working on backend services *nix for environments
+- Java, NodeJS, Python, and C/C++
+- 2 years with Go
+
+
+* Agenda
+
+- Overview
+- API Code Structure
+- Docker Engine Connectivity
+- API Calls
+- Unit Testing
+- Demos
+
+
+* Overview
+
+The Engine API is the API served by Docker Engine.
+It is the API the Docker client uses to communicate with the Engine,
+so everything the Docker client can do can be done with the API.
+
+Typical Usage:
+
+- Pulling and managing images
+- Running and managing containers
+- Reading logs and metrics
+- Managing networks and volumes
+- Creating and managing Swarms
+- Managing Swarm nodes and services
+
+
+
+* API Code Structure
+
+- Packages
+
+*github.com/docker/docker/client*
+A look at this package reveals the set of functionality provided by the Client struct.
+Once connected to the engine, this struct is used to make calls to the api.
+
+    cli, err := client.NewClient("tcp://zeus:12375","v1.26", nil, nil)
+    ...
+    containers, err := cli.ContainerList(context.Background(), options)
+
+*github.com/docker/docker/api/types*
+Contains the struct types used to send/received data to the Docker Engine as well as configuration options.
+
+
+
+* API Code Structure (continued)
+
+- Configuration and Data Exchange Types
+   container
+     Config, HostConfig, NetworkingConfig, ContainerCreateResponse
+   filter
+      Args
+   events
+      Message
+   network
+      Address, IPAM, IPAMConfig
+
+
+- Struct types easily convertible to/from JSON
+    type Container struct {
+    	ID         string `json:"Id"`
+    	...
+    }
+
+    type Message struct {
+        ...
+    	Time     int64 `json:"time,omitempty"`
+    }
+
+
+
+* Docker Engine Connectivity
+
+The *New* functions will not connect to the Docker Engine automatically. They only instantiate the Client object.
+
+- NewEnvClient - initializes a new API client based on environment variables.
+*DOCKER_HOST* to set the url to the docker server.
+*DOCKER_API_VERSION* to set the version of the API to reach, leave empty for latest.
+*DOCKER_CERT_PATH* to load the TLS certificates from.
+*DOCKER_TLS_VERIFY* to enable or disable TLS verification, off by default.
+
+
+- NewClient(host, version, httpClient, httpHeaders)
+  client.NewClient("unix:///var/run/docker.sock",
+                   "v1.18",
+                   httpClient,
+                   map[string]string{"User-Agent": "engine-api-cli-1.0"})
+
+
+- *Client.Close - ensures that transport.Client is closed
+
+* API Calls
+
+- Once you get *Client handle, you can perform calls to the Docker Engine. Some calls may need options. All of them take a *Context* as the first parameter.
+   responseBody, err := cli.ImageCreate(ctx, imageCanonical, types.ImageCreateOptions{})
+
+- Functions typically provide a response of a specific type with an *error*. There are functions that provide channels for both response and errors.
+
+   eventsChan, errChan := cli.Events(ctx, eventsOption)
+
+- There are functions that provide the ability to receive a data stream.
+
+   response, err := cli.ContainerStats(context.Background(), containerIdOrName, true)
+   ...
+   dec := json.NewDecoder(response.Body)
+   for {
+         var v *types.StatsJSON
+         if err := dec.Decode(&v); err != nil {
+           ...
+         }
+   }
+
+* Unit Testing
+
+- Mock the *httpClient
+
+    httpClient := newMockClient(errorMock(http.StatusInternalServerError, "Server error")),
+    cli := client.NewClient(host, version, httpClient, httpHeaders)
+    containers, err := cli.ContainerList(context.Background(), clo)
+
+
+- Use the Proxy Design Pattern
+
+    type Warehouse struct {
+    	ctx      context.Context
+    	options  types.ContainerListOptions
+    	delegate func(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
+    }
+
+    mock := &Warehouse{
+        delegate:func(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error) {
+            // mock as needed
+        }
+    }
+    containers, errr := mock.ContainerList()
+
+
+* Demos
+
+- Basics / Tests
+
+- Events Gathering
+
+- Docker Network
+
+- Container Statistics
+
+
+* Resources
+
+   https://github.com/GoLangPhilly/presentations/201703/docker-api-intro
+
+   https://docs.docker.com/engine/api/
+
+   https://github.com/bcicen/ctop
