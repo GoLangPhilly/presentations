@@ -1,0 +1,54 @@
+(Better) Profiling Tools in Go
+An open source journey
+21 Mar 2017
+Tags: profiling, pprof
+
+Zach Kauffman
+Software Engineer, Sidecar
+zkauffman4@gmail.com
+
+* Project Motivations
+Aside from delivering a production-grade profiling solution, there are a few goals of this project:
+
+- Community involvement (that's you!)
+- Learning
+- Giving back to open source community
+
+* What is it?
+At a high level, this project is intended to collect and display application-level metrics of programs:
+
+- CPU (with stack trace)
+- Memory (with stack trace)
+- Network
+
+.link https://github.com/auto-profile
+
+* Architecture
+.image images/diagram.png
+
+* Roadmap: Near term
+
+- NEW NAME (we'll buy you a beer)
+- Docker infrastructure for all services
+- Alpha version of dashboard
+- Authentication/token management
+- Easy install guide
+- Developer friendly documentation
+* Roadmap: Mid term
+
+- Experiment with adding additional language support
+- Finalize dashboard V1
+- Add additional metrics of value
+- Production ready for Go agent
+- Independent agent code
+* Roadmap: Long term
+
+- Easily add agent languages on demand
+- Easy cloud infrastructure configuration
+- Consumer friendly documentation
+
+* Thoughts?
+
+- How and what would people want to contribute?
+- What performance information do people want to see?
+- What languages other than Go need (better) profiling tools?
