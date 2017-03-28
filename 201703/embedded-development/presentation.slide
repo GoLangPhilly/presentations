@@ -1,0 +1,216 @@
+Embedded systems development with Go
+21 Mar 2017
+Tags: embedded systems, raspberry pi
+
+John Schaeffer
+john@schaeffer.io
+http://schaeffer.io/
+
+* What this talk will cover
+
+- What embedded systems are
+- Deploying code to the Raspberry Pi
+- Interacting with GPIO (general purpose I/O) on supported devices
+- Communicating with external hardware
+- Writing high-level code to drive embedded systems
+
+* What this talk will not cover
+
+- How to write embedded systems code
+- Running Go on bare metal (Go programs need to run on an OS)
+- Electronics fundamentals (voltage, current, resistance, etc.)
+
+* Overview
+
+* What are embedded systems?
+
+From Wikipedia: An embedded system is a computer system with a dedicated function within a larger mechanical or electrical system, often with real-time computing constraints.
+
+.image ./img/smsc-ethernet-chip.jpg
+.caption An SMSC ethernet chip on an embedded system. [[https://en.wikipedia.org/wiki/File:SMSC_LAN91C110_ethernet_chip.jpg][(source)]]
+
+[[https://en.wikipedia.org/wiki/Embedded_system]]
+
+* Why use Go for working with embedded systems?
+
+- Usual advantages: compiled binaries, static typing, good performance
+- Go build tools make cross-compilation for single-board devices easy
+- Standard library support for (some) low-level I/O
+- Good third-party support for GPIO operations
+
+* Things you can do with Go and embedded systems
+
+- Drive external devices using GPIO
+- Communicate with external hardware, not just other computers
+- Hook embedded systems into higher-level Go programs (who needs a Nest when you can build your own home thermostat?)
+
+* Things you can't do with Go and embedded systems
+
+- Run code on an embedded device
+
+This is a small but important point: embedded software runs on bare metal, directly manipulating registers and memory. Go programs run on top of an operating system and rely on the capabilities of an OS to function.
+
+* Go and the Raspberry Pi
+
+* Overview of the Raspberry Pi 3
+
+- Low-cost ($35 USD) single-board computer
+- 1.2 GHz ARM processor, 1GB RAM, 4 USB ports, HDMI output
+- GPIO, 3.3V pin headers
+- microSD card mount for OS, storage
+
+.image ./img/raspberry-pi-3.jpg
+.caption A Raspberry Pi 3 model B.
+
+Source: [[https://en.wikipedia.org/wiki/Raspberry_Pi]]
+
+* Developing for the Raspberry Pi
+
+- Go tools put intermediate files in `/tmp` during build
+- SD cards are slow and burn out easily
+- Therefore, we either want to mount `/tmp` outside of the card or build our Go binaries elsewhere
+- We'll be taking the second option for this talk
+
+Note: These instructions are Linux-specific. Raspbian ([[http://raspbian.org]]) is a popular Debian-based Linux distribution for the Pi.
+
+* Cross-compiling Go programs
+
+- Bootstrapping compiler means Go can build itself for any available target
+- Use `GOOS` and `GOARCH` environment variables to control build target
+- For ARM devices, set `GOARM` environment variable for appropriate ARM version (note: ARMv8 devices use `GOARCH=arm64` with no associated `GOARM` value)
+
+  $ GOOS=linux GOARCH=arm GOARM=7 go build github.com/my/project/cmd/foo
+
+- Deploy using whatever method you prefer (`scp`, FTP, network filesystem, etc.)
+
+Note: Raspberry Pi 3 has ARMv8 processor, but 32-bit OSes will report it as ARMv7
+
+* Things to keep in mind
+
+- Binaries built with `cgo` are not statically linked
+- Go programs with C dependencies will probably break
+- To disable `cgo`, set the environment variable `CGO_ENABLED` to `0`
+
+  $ CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build ...
+
+* Working with GPIO
+
+* Overview of GPIO
+
+- GPIO (general-purpose input/output) is a class of pins on an integrated circuit that have no predefined function
+- Fully programmable, great for interacting with external devices and sensors
+- Allows us to write programs at the application layer that work with physical hardware
+
+* Manipulating GPIO using Go
+
+- Multiple options exist for doing GPIO in Go
+- RPi specific: `github.com/stianeikeland/go-rpio`
+- Generic (Beaglebone, RPi, etc.): `github.com/kidoman/embd` and `github.com/mrmorphic/hwio`
+- Using `embd` here
+
+* Example: Toggling LEDs
+
+  func main() {
+  	// ...
+
+  	pin, errPin := embd.NewDigitalPin("P1_7")
+  	if errPin != nil {
+  		log.Fatal(errPin)
+  	}
+  	defer pin.Close()
+
+  	// ..	
+
+  	for {
+  		errWrite := pin.Write(embd.Low)
+  		if errWrite != nil {
+  			log.Fatal(errWrite)
+  			
+  		time.Sleep(1 * time.Second	
+  		errWrite = pin.Write(embd.High)
+  		if errWrite != nil {
+  			log.Fatal(errWrite)
+  			
+  		time.Sleep(1 * time.Second)
+  	}
+  }
+
+* Things to keep in mind
+
+- Application-level GPIO can't capture interrupts (Linux doesn't support it)
+- GPIO pins are not designed to supply power! Doing so can fry your device
+- Generic GPIO packages might not map pins the way you expect - check the source
+- User running a Go binary with GPIO needs to be root or part of the `gpio` group
+
+* Communicating with other devices
+
+* SPI overview
+
+- From Wikipedia: The Serial Peripheral Interface bus (SPI) is a synchronous serial communication interface specification used for short distance communication, primarily in embedded systems.
+- Logic signals: MOSI (Master Out Slave In), MISO (Master In Slave Out), SCLK (Serial Clock), SS (Slave Select)/CS (Chip Select)
+
+.image ./img/spi-single-slave.png
+.caption An example of an SPI bus with a single slave.
+
+Source: [[https://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus]]
+
+* Communicating over SPI using Go
+
+- Work in progress with the stdlib to support SPI: `golang.org/x/exp/io/spi`
+- Go SPI package requires the `spidev` kernel module, available with Raspbian
+- Connect MOSI/MISO/SCLK pins and correct SS/CS pins (marked as CE0/CE1 below)
+
+.image ./img/raspberry-pi-pinout.png
+.caption Raspberry Pi 3 pinout diagram. [[https://pinout.xyz/][(source)]]
+
+* Example: Reading temperature values over SPI
+
+  // NewReader creates a new SPI reader for the given path.
+  func NewReader(path string) (*Reader, error) {
+  	dev, errOpen := spi.Open(&spi.Devfs{
+  		Dev:      "/dev/spidev0.1",
+  		Mode:     spi.Mode3,
+  		MaxSpeed: 12000,
+  	})
+  	// ...
+
+  	return reader, nil
+    }
+
+  // DegsC gets the current temperature in Celsius over SPI (MSB first).
+  func (s *SPISource) DegsC() (float64, error) {
+  	rx := make([]byte, 2)
+  	_, errRead := s.reader.Read(rx) // s.reader is a *Reader
+  	// ...
+
+  	tempX10 := (int(rx[0]) << 8) + int(rx[1])
+  	temp := float64(tempX10) / 10 
+
+  	return temp, nil
+  }
+
+* Things to keep in mind
+
+- Go SPI support is Linux-only
+- `spidev` kernel module only supports operating as master, not slave
+- Raspberry Pi supports a max of 2 SS/CS pins (`/dev/spidev0.0` and `/dev/spidev0.1`)
+- User running a Go binary with SPI needs to be root or part of the `spi` group
+- SPI modes can be tricky to get right - read your device datasheet(s)
+
+* Bringing it all together
+
+* What we've covered
+
+- Working with embedded systems in pure Go is possible and straightforward
+- Writing embedded code in Go is not (use C/ASM)
+- Cross-compilation and deployment to a board are easy, no third-party tools needed
+- Linux kernel support for SPI makes communication with external devices much simpler
+
+* Project ideas
+
+- HTTP home weather server
+- Automated pet food bowl
+- Dedicated display for email notifications
+- Something with `gokrazy`
+
+Others?
