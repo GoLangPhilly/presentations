@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+option go_package = "docker/service";
+
+message Container {
+   string id     = 1;
+   string name   = 2;
+   string status = 3;
+   string state  = 4;
+   int64 created = 5;
+   bool running  = 6;
+}
+
+message GetAllContainersRequest {}
+
+message ContainerCatalog {
+   repeated Container containers = 1;
+}
+
+
+message ContainerStatsRequest {
+  string container = 1;
+}
+
+message ContainerStats {
+	string container        = 1;
+	double cpu_percentage    = 2;
+	double memory_percentage = 3;
+	double memory_limit      = 4;
+	enum MemorySize {
+	 B  = 0;
+	 KB = 1;
+         MB = 2;
+         GB = 3;
+         TB = 4;
+         PB = 5;
+         EB = 6;
+         ZB = 7;
+         YB = 8;
+	}
+	MemorySize memory_size_type = 5;
+}
+
+service DockerService {
+
+   rpc GetAllContainers(GetAllContainersRequest) returns (ContainerCatalog) {}
+   
+   rpc GetContainerStats(ContainerStatsRequest) returns (stream ContainerStats) {}
+
+}

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option java_package = "org.golangphilly.grpc.file.transfer";
+option go_package   = "go_client/file/transfer";
+
+message FileRequest {
+  bytes data = 1;
+  string filename = 2;
+}
+
+message FileResponse {
+  string filename = 1;
+  uint64 size     = 2;
+  bool isOk       = 3;
+}
+
+service FileTransferService {
+  rpc Upload (stream FileRequest) returns (FileResponse);
+}
